@@ -1,0 +1,130 @@
+# Core Django Framework
+Django==5.2.5
+
+# Django Channels for WebSocket support
+channels==4.0.0
+channels-redis==4.2.0
+
+# Database drivers
+psycopg2-binary==2.9.9  # PostgreSQL driver
+
+# Redis client and caching
+redis==5.0.1
+django-redis==5.4.0
+
+# Task processing
+celery==5.3.4
+kombu==5.3.4
+
+# REST API Framework
+djangorestframework==3.14.0
+djangorestframework-simplejwt==5.3.0
+
+# ASGI server for production
+daphne==4.1.0
+uvicorn[standard]==0.24.0
+
+# Environment configuration
+python-decouple==3.8
+python-dotenv==1.0.0
+
+# Timezone handling
+pytz==2023.3
+
+# JSON Web Tokens
+PyJWT==2.8.0
+
+# HTTP client for API integrations
+requests==2.31.0
+
+# Date and time utilities
+python-dateutil==2.8.2
+
+# Data validation and serialization
+marshmallow==3.20.2
+
+# File handling and storage
+Pillow==10.1.0  # Image processing
+boto3==1.34.0   # AWS S3 integration (optional)
+django-storages==1.14.2  # Cloud storage backends
+
+# Monitoring and logging
+sentry-sdk[django]==1.40.0  # Error tracking (optional)
+
+# Testing
+pytest==7.4.3
+pytest-django==4.7.0
+pytest-asyncio==0.23.2
+factory-boy==3.3.0  # Test data factories
+coverage==7.3.2
+
+# Development tools (optional)
+django-debug-toolbar==4.2.0  # Development debugging
+django-extensions==3.2.3     # Development utilities
+
+# Performance monitoring
+django-silk==5.0.4  # Profiling (optional)
+
+# Rate limiting and security
+django-ratelimit==4.1.0
+django-cors-headers==4.3.1
+
+# API documentation
+drf-spectacular==0.27.0  # OpenAPI schema generation
+
+# Phone number handling for call center
+phonenumbers==8.13.27
+
+# Excel/CSV handling for lead imports
+openpyxl==3.1.2
+pandas==2.1.4
+
+# Cryptography for security
+cryptography==41.0.8
+
+# Message queuing alternatives (optional)
+kombu[redis]==5.3.4
+
+# Production server utilities
+gunicorn==21.2.0  # WSGI server alternative
+whitenoise==6.6.0  # Static file serving
+
+# Database utilities
+django-extensions==3.2.3  # Database shell enhancements
+
+# Form handling
+django-crispy-forms==2.1
+crispy-bootstrap5==0.7
+
+# Internationalization
+django-modeltranslation==0.18.11
+
+# Health checks
+django-health-check==3.17.0
+
+# Background task monitoring
+flower==2.0.1  # Celery monitoring
+
+# Memory profiling (development)
+memory-profiler==0.61.0
+
+# API rate limiting
+django-ratelimit==4.1.0
+
+# Caching utilities
+django-cachalot==2.6.1  # ORM caching
+
+# Email utilities
+django-anymail==10.2  # Email service providers
+
+# Search capabilities (for future use)
+django-haystack==3.2.1  # Search framework
+
+# Time zone handling
+django-timezone-field==6.0.1
+
+# Model utilities
+django-model-utils==4.3.1
+
+# URL utilities
+django-hosts==6.0  # Multi-domain support
