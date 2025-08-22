@@ -24,6 +24,11 @@ INSTALLED_APPS = [
     # Django REST Framework (for API functionality)
     'rest_framework',
     'rest_framework_simplejwt',
+    # PyDialer apps
+    'agents',
+    'campaigns',
+    'calls',
+    'leads',
 ]
 
 MIDDLEWARE = [
@@ -96,6 +101,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Custom User Model
+AUTH_USER_MODEL = 'agents.User'
 
 # Security settings (will be overridden in production)
 SECURE_BROWSER_XSS_FILTER = True
