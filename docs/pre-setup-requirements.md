@@ -21,11 +21,11 @@ This document outlines all system dependencies, software installations, and infr
 ## 2. Core Software Dependencies
 
 ### Programming Language & Runtime
-- **Python 3.13** (as configured in PyCharm IDE)
+- **Python 3.9** (as configured in PyCharm IDE)
   ```bash
   # Verify installation
   python --version
-  # Should output: Python 3.13.x
+  # Should output: Python 3.9.x
   ```
 
 ### Virtual Environment Management
@@ -202,7 +202,7 @@ npm --version
 ### Integrated Development Environment
 - **PyCharm Professional** (currently configured)
 - **Alternative**: VS Code with Python extensions
-- **Configuration**: Django integration, Python 3.13 interpreter
+- **Configuration**: Django integration, Python 3.9 interpreter
 
 ### Version Control
 - **Git**: Latest version
@@ -301,7 +301,7 @@ git --version
 ## 14. Installation Checklist
 
 ### Phase 1 Prerequisites (Before Development)
-- [ ] Python 3.13 installed and configured
+- [ ] Python 3.9 installed and configured
 - [ ] Virtual environment created and activated
 - [ ] PostgreSQL installed and configured
 - [ ] Redis server installed and running

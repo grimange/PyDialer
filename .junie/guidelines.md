@@ -1,39 +1,37 @@
 # PyDialer Development Guidelines
 
 ## Project Overview
-This is a Django Channels-based implementation of a Vicidial-like predictive dialer/call center system. The project is in early development stages with the basic Django 5.2.5 project structure in place.
+This is a Django Channels-based implementation of a Vicidial-like predictive dialer/call center system. The project is in early development stages with the basic Django 4.2.16 project structure in place.
 
 ## Build/Configuration Instructions
 
 ### Prerequisites
-- Python 3.13 (as configured in PyCharm IDE)
+- Python 3.9 (as configured in PyCharm IDE)
 - Virtual environment support (.venv directory present)
 
 ### Initial Setup
 1. **Virtual Environment Setup**:
-   ```bash
+   ```powershell
    # Activate the existing virtual environment
-   .venv\Scripts\activate  # Windows
-   # or
-   source .venv/bin/activate  # Linux/Mac
+   .venv\Scripts\activate
    ```
 
 2. **Django Installation**:
-   The project uses Django 5.2.5. Install dependencies:
-   ```bash
-   pip install Django==5.2.5
+   The project uses Django 4.2.16. Install dependencies:
+   ```powershell
+   pip install Django==4.2.16
    # Additional dependencies will be needed as development progresses:
    pip install channels redis celery psycopg2-binary
    ```
 
 3. **Database Setup**:
    Currently using SQLite for development. Run initial migrations:
-   ```bash
+   ```powershell
    python manage.py migrate
    ```
 
 4. **Development Server**:
-   ```bash
+   ```powershell
    python manage.py runserver
    ```
 
@@ -59,7 +57,7 @@ Based on the architectural documentation (`docs/vicidial_like_system_architectur
 The project uses Django's built-in testing framework with no additional configuration required.
 
 ### Running Tests
-```bash
+```powershell
 # Run all tests
 python manage.py test
 
@@ -170,7 +168,7 @@ Based on the architectural documentation, the project should be organized into t
 4. **Frontend Integration**: WebSocket client for real-time updates
 
 ### IDE Configuration
-- **PyCharm Project**: Configured with Python 3.13 interpreter
+- **PyCharm Project**: Configured with Python 3.9 interpreter
 - **Django Integration**: Django server run configuration available
 - **Module Structure**: Main project in `PyDialer/`
 
@@ -192,5 +190,5 @@ Call centers have specific regulatory requirements:
 
 ---
 *Generated: 2025-08-22 07:58*
-*Django Version: 5.2.5*
-*Python Version: 3.13*
+*Django Version: 4.2.16*
+*Python Version: 3.9*

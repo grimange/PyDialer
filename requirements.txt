@@ -1,5 +1,5 @@
 # Core Django Framework
-Django==5.2.5
+Django==4.2.16  # LTS version compatible with Python 3.9
 
 # Django Channels for WebSocket support
 channels==4.0.0
@@ -44,7 +44,7 @@ python-dateutil==2.8.2
 marshmallow==3.20.2
 
 # File handling and storage
-Pillow==10.1.0  # Image processing
+Pillow==10.4.0  # Image processing - Compatible with Python 3.9
 boto3==1.34.0   # AWS S3 integration (optional)
 django-storages==1.14.2  # Cloud storage backends
 
@@ -77,10 +77,10 @@ phonenumbers==8.13.27
 
 # Excel/CSV handling for lead imports
 openpyxl==3.1.2
-pandas==2.1.4
+pandas==2.2.3
 
 # Cryptography for security
-cryptography==41.0.8
+cryptography==45.0.6
 
 # Message queuing alternatives (optional)
 kombu[redis]==5.3.4
@@ -89,8 +89,7 @@ kombu[redis]==5.3.4
 gunicorn==21.2.0  # WSGI server alternative
 whitenoise==6.6.0  # Static file serving
 
-# Database utilities
-django-extensions==3.2.3  # Database shell enhancements
+# Database utilities (consolidated above in development tools)
 
 # Form handling
 django-crispy-forms==2.1
@@ -108,11 +107,10 @@ flower==2.0.1  # Celery monitoring
 # Memory profiling (development)
 memory-profiler==0.61.0
 
-# API rate limiting
-django-ratelimit==4.1.0
+# API rate limiting (already included above in rate limiting section)
 
 # Caching utilities
-django-cachalot==2.6.1  # ORM caching
+django-cachalot==2.8.0  # ORM caching - Updated for Django 5.x compatibility
 
 # Email utilities
 django-anymail==10.2  # Email service providers
@@ -121,10 +119,82 @@ django-anymail==10.2  # Email service providers
 django-haystack==3.2.1  # Search framework
 
 # Time zone handling
-django-timezone-field==6.0.1
+django-timezone-field==7.1  # Updated for Django 5.x compatibility
 
 # Model utilities
 django-model-utils==4.3.1
 
 # URL utilities
 django-hosts==6.0  # Multi-domain support
+
+# Telephony Integration
+aiortc==1.6.0  # WebRTC support for browser-based calling
+aiohttp==3.9.1  # Async HTTP client for telephony APIs
+websockets==12.0  # WebSocket client for Asterisk ARI
+pyst2==0.5.1  # Asterisk AGI/AMI integration
+# asterisk-ari-py==1.5.0  # Asterisk REST Interface client - Package not found, needs research for correct package name
+
+# AI Integration
+openai==1.6.1  # OpenAI API client for Whisper STT
+speechrecognition==3.10.0  # Speech recognition utilities
+pydub==0.25.1  # Audio file manipulation
+numpy==1.24.3  # Audio processing support - Compatible with Python 3.9
+scipy==1.10.1  # Signal processing for audio - Compatible with Python 3.9
+
+# Audio Processing
+pyaudio==0.2.11  # Audio I/O for real-time processing
+webrtcvad==2.0.10  # Voice Activity Detection
+librosa==0.10.1  # Audio analysis and processing
+
+# Time-Series Database Support
+clickhouse-driver==0.2.6  # ClickHouse database driver
+# psycopg2-binary==2.9.9  # Already included above - TimescaleDB uses PostgreSQL
+
+# Analytics and Monitoring
+prometheus-client==0.19.0  # Prometheus metrics
+grafana-api==1.0.3  # Grafana API client
+elasticsearch==8.11.0  # Elasticsearch for log aggregation
+elasticsearch-dsl==8.11.0  # Elasticsearch query DSL
+
+# Advanced Data Processing
+scikit-learn==1.3.2  # Machine learning for predictive algorithms - Compatible with Python 3.9
+joblib==1.3.2  # Parallel processing for ML tasks
+
+# Additional Security
+python-jose[cryptography]==3.3.0  # JWT handling with crypto
+passlib[bcrypt]==1.7.4  # Password hashing
+
+# WebRTC and Media Processing  
+aiofiles==23.2.1  # Async file I/O for media handling
+
+# Task Queue Monitoring
+# celery[redis]==5.3.4  # Enhanced Celery with Redis extras - Removed to avoid conflict with celery==5.3.4
+
+# Advanced HTTP Features
+httpx==0.26.0  # Modern async HTTP client
+starlette==0.32.0  # ASGI toolkit for advanced features
+
+# Compliance and Audit
+django-simple-history==3.4.0  # Model change tracking for audit trails
+django-guardian==2.4.0  # Object-level permissions
+
+# Advanced Caching
+# django-redis-cache==3.0.1  # Enhanced Redis caching - Removed due to conflict with django-redis
+hiredis==2.3.2  # High-performance Redis client
+
+# Geolocation for Timezone/DNC
+geoip2==4.7.0  # IP geolocation
+requests-toolbelt==1.0.0  # Enhanced HTTP utilities
+
+# Data Export/Import
+xlsxwriter==3.1.9  # Excel file generation
+tablib==3.5.0  # Data export in multiple formats
+
+# Advanced Serialization
+msgpack==1.0.7  # Efficient binary serialization for WebSocket messages
+
+# Media Storage and CDN
+django-imagekit==5.0.0  # Image processing and optimization
+
+# Development and Debugging (Development only)
+django-querycount==0.8.3  # Query optimization debugging

@@ -581,3 +581,188 @@ class ComplianceAuditLog(models.Model):
         return (self.severity in ['high', 'critical'] or 
                 self.audit_type in ['dnc_check', 'consent_verification'] or
                 self.requires_review)
+
+
+class Disposition(models.Model):
+    """
+    Call disposition management for comprehensive call outcomes and follow-up actions
+    """
+    DISPOSITION_CATEGORIES = [
+        ('contact', 'Contact Made'),
+        ('no_contact', 'No Contact'),
+        ('callback', 'Callback Required'),
+        ('dnc', 'Do Not Call'),
+        ('sale', 'Sale/Success'),
+        ('system', 'System Related'),
+    ]
+
+    PRIORITY_LEVELS = [
+        ('low', 'Low'),
+        ('normal', 'Normal'),
+        ('high', 'High'),
+        ('urgent', 'Urgent'),
+    ]
+
+    CALLBACK_TYPES = [
+        ('specific_time', 'Specific Time'),
+        ('anytime', 'Anytime'),
+        ('best_time', 'Best Time to Call'),
+        ('appointment', 'Scheduled Appointment'),
+    ]
+
+    # Unique identifier
+    disposition_id = models.UUIDField(default=uuid.uuid4, unique=True, db_index=True)
+    
+    # Related call information
+    call_task = models.ForeignKey(CallTask, on_delete=models.CASCADE, related_name='dispositions')
+    cdr = models.OneToOneField(CallDetailRecord, on_delete=models.CASCADE, related_name='disposition', null=True, blank=True)
+    
+    # Basic disposition information
+    disposition_code = models.CharField(max_length=50, db_index=True, help_text="Standardized disposition code")
+    disposition_name = models.CharField(max_length=100, help_text="Human-readable disposition name")
+    category = models.CharField(max_length=20, choices=DISPOSITION_CATEGORIES, db_index=True)
+    
+    # Agent and timing
+    agent = models.ForeignKey(User, on_delete=models.PROTECT, related_name='agent_dispositions')
+    disposition_time = models.DateTimeField(auto_now_add=True, db_index=True)
+    wrap_up_time = models.DateTimeField(null=True, blank=True, help_text="Time when wrap-up was completed")
+    
+    # Disposition details
+    notes = models.TextField(blank=True, help_text="Agent notes about the call")
+    is_final = models.BooleanField(default=True, help_text="Whether this is a final disposition")
+    requires_followup = models.BooleanField(default=False)
+    
+    # Callback scheduling
+    schedule_callback = models.BooleanField(default=False)
+    callback_date = models.DateField(null=True, blank=True)
+    callback_time = models.TimeField(null=True, blank=True)
+    callback_type = models.CharField(max_length=20, choices=CALLBACK_TYPES, blank=True)
+    callback_notes = models.TextField(blank=True)
+    callback_priority = models.CharField(max_length=10, choices=PRIORITY_LEVELS, default='normal')
+    
+    # Best time to call preferences
+    best_time_start = models.TimeField(null=True, blank=True)
+    best_time_end = models.TimeField(null=True, blank=True)
+    best_days = models.CharField(max_length=20, blank=True, help_text="Preferred days of week")
+    timezone_preference = models.CharField(max_length=50, blank=True)
+    
+    # Sale/Success tracking
+    sale_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    products_sold = models.JSONField(null=True, blank=True, help_text="List of products/services sold")
+    commission_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    
+    # Quality and compliance
+    quality_score = models.IntegerField(null=True, blank=True, help_text="Call quality score 1-10")
+    compliance_flags = models.JSONField(null=True, blank=True, help_text="Any compliance issues noted")
+    requires_supervisor_review = models.BooleanField(default=False)
+    supervisor_reviewed = models.BooleanField(default=False)
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='reviewed_dispositions')
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    
+    # System fields
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # Data validation
+    is_valid = models.BooleanField(default=True, help_text="Whether disposition data is valid")
+    validation_errors = models.JSONField(null=True, blank=True, help_text="Any validation errors")
+
+    class Meta:
+        db_table = 'call_dispositions'
+        ordering = ['-disposition_time']
+        indexes = [
+            models.Index(fields=['disposition_code']),
+            models.Index(fields=['category', 'disposition_time']),
+            models.Index(fields=['agent', 'disposition_time']),
+            models.Index(fields=['schedule_callback', 'callback_date']),
+            models.Index(fields=['requires_followup']),
+            models.Index(fields=['is_final']),
+            models.Index(fields=['requires_supervisor_review']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(schedule_callback=False) | (
+                    models.Q(schedule_callback=True) & models.Q(callback_date__isnull=False)
+                ),
+                name='callback_date_required_when_scheduled'
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.disposition_name} - {self.call_task.lead.phone} by {self.agent.get_full_name()}"
+
+    def save(self, *args, **kwargs):
+        """Override save to handle automatic callback task creation"""
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        
+        # Create callback task if scheduled
+        if is_new and self.schedule_callback and self.callback_date:
+            self.create_callback_task()
+
+    def create_callback_task(self):
+        """Create a new CallTask for the scheduled callback"""
+        from datetime import datetime, time
+        
+        # Determine callback datetime
+        callback_time = self.callback_time or time(10, 0)  # Default to 10 AM
+        callback_datetime = datetime.combine(self.callback_date, callback_time)
+        
+        # Create new call task
+        CallTask.objects.create(
+            campaign=self.call_task.campaign,
+            lead=self.call_task.lead,
+            call_type='callback',
+            state='pending',
+            phone_number=self.call_task.phone_number,
+            caller_id=self.call_task.caller_id,
+            scheduled_at=callback_datetime,
+            priority=self.callback_priority,
+            notes=f"Callback scheduled from disposition {self.disposition_id}"
+        )
+
+    def mark_supervisor_reviewed(self, supervisor):
+        """Mark disposition as reviewed by supervisor"""
+        self.supervisor_reviewed = True
+        self.reviewed_by = supervisor
+        self.reviewed_at = timezone.now()
+        self.save(update_fields=['supervisor_reviewed', 'reviewed_by', 'reviewed_at'])
+
+    def validate_disposition(self):
+        """Validate disposition data integrity"""
+        errors = []
+        
+        # Check callback scheduling consistency
+        if self.schedule_callback and not self.callback_date:
+            errors.append("Callback date is required when scheduling callback")
+        
+        # Check sale information consistency
+        if self.category == 'sale' and not self.sale_amount:
+            errors.append("Sale amount should be specified for sales dispositions")
+        
+        # Check DNC compliance
+        if self.category == 'dnc' and self.schedule_callback:
+            errors.append("Cannot schedule callback for DNC disposition")
+        
+        self.validation_errors = errors if errors else None
+        self.is_valid = len(errors) == 0
+        return self.is_valid
+
+    @classmethod
+    def get_disposition_statistics(cls, campaign=None, agent=None, date_range=None):
+        """Get disposition statistics for reporting"""
+        queryset = cls.objects.all()
+        
+        if campaign:
+            queryset = queryset.filter(call_task__campaign=campaign)
+        if agent:
+            queryset = queryset.filter(agent=agent)
+        if date_range:
+            queryset = queryset.filter(disposition_time__range=date_range)
+        
+        return queryset.values('category', 'disposition_code').annotate(
+            count=models.Count('id'),
+            avg_quality=models.Avg('quality_score'),
+            total_sales=models.Sum('sale_amount')
+        ).order_by('-count')
