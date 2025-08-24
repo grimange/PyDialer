@@ -114,9 +114,9 @@ This document provides a comprehensive, actionable checklist for implementing a 
 - [x] 79. Configure AMI (Asterisk Manager Interface) for events
 - [x] 80. Implement call origination and control via ARI
 - [x] 81. Create telephony service abstraction layer
-- [ ] 82. Set up SIP trunking and PSTN connectivity
-- [ ] 83. Implement inbound call routing and queuing
-- [ ] 84. Add call recording and storage integration
+- [x] 82. Set up SIP trunking and PSTN connectivity
+- [x] 83. Implement inbound call routing and queuing
+- [x] 84. Add call recording and storage integration
 
 ### 11a. AI Media Gateway Implementation
 
@@ -130,11 +130,11 @@ This document provides a comprehensive, actionable checklist for implementing a 
 - [x] 91. Create AI events webhook endpoint (/ai/events) with HMAC validation
 - [x] 92. Implement real-time transcript broadcasting via WebSocket groups
 - [x] 93. Add Voice Activity Detection (VAD) for audio chunking optimization
-- [ ] 94. Create TTS integration for optional AI response playback
+- [x] 94. Create TTS integration for optional AI response playback
 - [x] 95. Set up audio format conversion utilities (PCM, G.711 μ-law/A-law)
 - [x] 96. Implement call-specific WebSocket groups for targeted transcript delivery
-- [ ] 97. Add error handling and retry mechanisms for AI service calls
-- [ ] 98. Create Docker containers for AI Media Gateway components
+- [x] 97. Add error handling and retry mechanisms for AI service calls
+- [x] 98. Create Docker containers for AI Media Gateway components
 
 #### Option B: External AI Media Gateway Integration
 - [ ] 113. Research and evaluate external AI media gateway providers (e.g., Deepgram, AssemblyAI, Azure Cognitive Services)

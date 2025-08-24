@@ -1,0 +1,111 @@
+# AI Media Gateway Docker Container
+# Optimized for PyDialer AI Media Gateway components including:
+# - OpenAI Whisper integration
+# - OpenAI TTS integration  
+# - WebRTC gateway
+# - RTP gateway
+# - Audio processing utilities
+
+FROM python:3.9-slim
+
+LABEL maintainer="PyDialer Team"
+LABEL description="AI Media Gateway for PyDialer call center system"
+LABEL version="1.0"
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Create non-root user
+RUN groupadd -g 1000 pydialer && \
+    useradd -r -u 1000 -g pydialer -d /app -s /bin/bash -c "PyDialer user" pydialer
+
+# Install system dependencies for audio processing
+RUN apt-get update && apt-get install -y \
+    # Audio processing libraries
+    libsndfile1-dev \
+    libsox-dev \
+    libsoxr-dev \
+    libasound2-dev \
+    libpulse-dev \
+    # Network and development tools
+    build-essential \
+    gcc \
+    g++ \
+    wget \
+    curl \
+    git \
+    pkg-config \
+    # Required for WebRTC
+    libssl-dev \
+    libffi-dev \
+    # Required for numpy/scipy
+    libatlas-base-dev \
+    liblapack-dev \
+    gfortran \
+    # Cleanup
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Set work directory
+WORKDIR /app
+
+# Copy requirements for AI Media Gateway
+COPY requirements-ai.txt /app/
+COPY requirements.txt /app/
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir -r requirements-ai.txt
+
+# Copy application code
+COPY --chown=pydialer:pydialer . /app/
+
+# Create necessary directories
+RUN mkdir -p /app/media/audio \
+    /app/logs \
+    /app/tmp \
+    && chown -R pydialer:pydialer /app
+
+# Switch to non-root user
+USER pydialer
+
+# Create directories for audio processing
+RUN mkdir -p /app/media/tts \
+    /app/media/transcripts \
+    /app/media/recordings
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "
+import asyncio
+import sys
+from telephony.whisper_integration import get_whisper_service
+from telephony.tts_integration import get_tts_service
+
+async def health_check():
+    try:
+        # Basic service availability check
+        whisper_service = await get_whisper_service()
+        tts_service = await get_tts_service() 
+        return True
+    except Exception as e:
+        print(f'Health check failed: {e}')
+        return False
+
+result = asyncio.run(health_check())
+sys.exit(0 if result else 1)
+"
+
+# Expose ports
+EXPOSE 8001 8002
+
+# Environment-specific settings
+ENV DJANGO_SETTINGS_MODULE=PyDialer.settings.staging
+ENV AI_GATEWAY_PORT=8001
+ENV WEBRTC_GATEWAY_PORT=8002
+
+# Command to run AI Media Gateway services
+CMD ["python", "-m", "telephony.management.commands.ai_gateway_server"]

@@ -1,0 +1,251 @@
+version: '3.8'
+
+services:
+  # AI Media Gateway Service
+  ai-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.ai-gateway
+    container_name: pydialer-ai-gateway
+    hostname: ai-gateway
+    ports:
+      - "${AI_GATEWAY_PORT:-8001}:8001"
+      - "${WEBRTC_GATEWAY_PORT:-8002}:8002"
+    environment:
+      # Django settings
+      - DJANGO_SETTINGS_MODULE=PyDialer.settings.staging
+      - DEBUG=${DEBUG:-False}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      
+      # Database configuration
+      - DB_CONNECTION=${DB_CONNECTION:-postgresql}
+      - DB_HOST=${DB_HOST:-db}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-pydialer}
+      - DB_USER=${DB_USER:-pydialer}
+      - DB_PASSWORD=${DB_PASSWORD}
+      
+      # Redis configuration
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_DB=${REDIS_DB:-0}
+      
+      # OpenAI API configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      
+      # TTS configuration
+      - TTS_MODEL=${TTS_MODEL:-tts-1}
+      - TTS_VOICE=${TTS_VOICE:-alloy}
+      - TTS_FORMAT=${TTS_FORMAT:-wav}
+      - TTS_SPEED=${TTS_SPEED:-1.0}
+      - TTS_TIMEOUT=${TTS_TIMEOUT:-30}
+      - TTS_MAX_RETRIES=${TTS_MAX_RETRIES:-3}
+      
+      # Whisper configuration
+      - WHISPER_MODEL=${WHISPER_MODEL:-whisper-1}
+      - WHISPER_TIMEOUT=${WHISPER_TIMEOUT:-30}
+      - WHISPER_MAX_RETRIES=${WHISPER_MAX_RETRIES:-3}
+      
+      # Asterisk ARI configuration
+      - ASTERISK_ARI_HOST=${ASTERISK_ARI_HOST:-asterisk}
+      - ASTERISK_ARI_PORT=${ASTERISK_ARI_PORT:-8088}
+      - ASTERISK_ARI_USERNAME=${ASTERISK_ARI_USERNAME:-pydialer}
+      - ASTERISK_ARI_PASSWORD=${ASTERISK_ARI_PASSWORD}
+      - ASTERISK_ARI_APP_NAME=${ASTERISK_ARI_APP_NAME:-pydialer}
+      
+      # Audio processing configuration
+      - AUDIO_SAMPLE_RATE=${AUDIO_SAMPLE_RATE:-16000}
+      - AUDIO_CHUNK_DURATION=${AUDIO_CHUNK_DURATION:-0.5}
+      - VAD_AGGRESSIVENESS=${VAD_AGGRESSIVENESS:-2}
+      
+      # WebRTC configuration
+      - WEBRTC_STUN_SERVER=${WEBRTC_STUN_SERVER:-stun:stun.l.google.com:19302}
+      - WEBRTC_TURN_SERVER=${WEBRTC_TURN_SERVER}
+      - WEBRTC_TURN_USERNAME=${WEBRTC_TURN_USERNAME}
+      - WEBRTC_TURN_PASSWORD=${WEBRTC_TURN_PASSWORD}
+      
+      # AI Gateway specific settings
+      - AI_GATEWAY_PORT=8001
+      - WEBRTC_GATEWAY_PORT=8002
+      - AI_WEBHOOK_SECRET=${AI_WEBHOOK_SECRET}
+      - ENABLE_AI_TRANSCRIPTION=${ENABLE_AI_TRANSCRIPTION:-true}
+      - ENABLE_TTS_PLAYBACK=${ENABLE_TTS_PLAYBACK:-true}
+      
+    volumes:
+      # Persistent storage for audio files
+      - ai_gateway_media:/app/media
+      - ai_gateway_logs:/app/logs
+      - ai_gateway_tmp:/app/tmp
+      
+      # Configuration files
+      - ./telephony/config:/app/telephony/config:ro
+      
+    networks:
+      - pydialer-network
+      
+    depends_on:
+      - redis
+      - db
+      
+    restart: unless-stopped
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.5'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "
+        import asyncio, sys;
+        from telephony.whisper_integration import get_whisper_service;
+        from telephony.tts_integration import get_tts_service;
+        async def check():
+          try:
+            await get_whisper_service();
+            await get_tts_service();
+            return True
+          except:
+            return False;
+        sys.exit(0 if asyncio.run(check()) else 1)
+      "]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Redis service for AI Gateway caching and message queues
+  redis:
+    image: redis:7-alpine
+    container_name: pydialer-redis-ai
+    hostname: redis-ai
+    ports:
+      - "${REDIS_AI_PORT:-6380}:6379"
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    volumes:
+      - redis_ai_data:/data
+    networks:
+      - pydialer-network
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      ${REDIS_PASSWORD:+--requirepass $REDIS_PASSWORD}
+
+  # PostgreSQL database (shared with main application)
+  db:
+    image: postgres:14-alpine
+    container_name: pydialer-db-ai
+    hostname: db-ai
+    environment:
+      - POSTGRES_DB=${DB_NAME:-pydialer}
+      - POSTGRES_USER=${DB_USER:-pydialer}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres_ai_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - pydialer-network
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_AI_PORT:-5433}:5432"
+
+  # Asterisk PBX for telephony integration
+  asterisk:
+    build:
+      context: .
+      dockerfile: docker/asterisk/Dockerfile
+    container_name: pydialer-asterisk-ai
+    hostname: asterisk-ai
+    ports:
+      # SIP
+      - "${SIP_PORT:-5060}:5060/udp"
+      - "${SIP_PORT:-5060}:5060/tcp"
+      # RTP range
+      - "${RTP_START:-10000}-${RTP_END:-20000}:10000-20000/udp"
+      # ARI
+      - "${ASTERISK_ARI_PORT:-8088}:8088"
+      # AMI
+      - "${ASTERISK_AMI_PORT:-5038}:5038"
+    environment:
+      - ASTERISK_ARI_USERNAME=${ASTERISK_ARI_USERNAME:-pydialer}
+      - ASTERISK_ARI_PASSWORD=${ASTERISK_ARI_PASSWORD}
+      - ASTERISK_AMI_USERNAME=${ASTERISK_AMI_USERNAME:-pydialer}
+      - ASTERISK_AMI_PASSWORD=${ASTERISK_AMI_PASSWORD}
+    volumes:
+      - asterisk_config:/etc/asterisk
+      - asterisk_spool:/var/spool/asterisk
+      - asterisk_logs:/var/log/asterisk
+      - asterisk_sounds:/var/lib/asterisk/sounds
+    networks:
+      - pydialer-network
+    restart: unless-stopped
+    depends_on:
+      - ai-gateway
+
+  # Monitoring and observability
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: pydialer-prometheus-ai
+    hostname: prometheus-ai
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - pydialer-network
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+
+networks:
+  pydialer-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  # AI Gateway volumes
+  ai_gateway_media:
+    driver: local
+  ai_gateway_logs:
+    driver: local
+  ai_gateway_tmp:
+    driver: local
+    
+  # Database volumes
+  postgres_ai_data:
+    driver: local
+  redis_ai_data:
+    driver: local
+    
+  # Asterisk volumes
+  asterisk_config:
+    driver: local
+  asterisk_spool:
+    driver: local
+  asterisk_logs:
+    driver: local
+  asterisk_sounds:
+    driver: local
+    
+  # Monitoring volumes
+  prometheus_data:
+    driver: local

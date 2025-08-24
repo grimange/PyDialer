@@ -1,0 +1,52 @@
+# AI Media Gateway Dependencies for PyDialer
+# These are the additional dependencies required for AI Media Gateway functionality
+# as specified in docs/tasks.md
+
+# WebRTC peer connections for browser-based audio
+aiortc==1.6.0
+
+# Async HTTP client for Asterisk ARI communication
+aiohttp==3.9.1
+
+# Voice Activity Detection for audio processing optimization
+webrtcvad==2.0.10
+
+# Audio file processing and format conversion
+soundfile==0.12.1
+
+# Audio data manipulation and signal processing
+numpy==1.24.4
+
+# OpenAI API integration for Whisper STT and TTS
+openai==1.6.1
+
+# High-quality audio resampling for production deployments
+soxr==0.3.7
+
+# Additional dependencies for robust audio processing
+scipy==1.11.4
+librosa==0.10.1
+audioread==3.0.1
+
+# WebSocket support for real-time communication
+websockets==11.0.3
+
+# Additional audio processing utilities
+pyaudio==0.2.11
+wave==0.0.2
+
+# Async utilities and helpers
+aiofiles==23.2.1
+asyncio-throttle==1.0.2
+
+# Enhanced logging and monitoring
+structlog==23.2.0
+prometheus-client==0.19.0
+
+# Security and encryption for AI webhook validation
+cryptography==41.0.8
+PyJWT==2.8.0
+
+# Development and testing utilities (optional)
+pytest-asyncio==0.21.1
+factory-boy==3.3.0
