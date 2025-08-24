@@ -1,0 +1,30 @@
+version: '3.8'
+services:
+  asterisk:
+    image: andrius/asterisk:18-current
+    container_name: pydialer-asterisk
+    restart: unless-stopped
+    ports:
+      - "5060:5060/udp"  # SIP
+      - "8088:8088/tcp"  # ARI HTTP
+      - "5038:5038/tcp"  # AMI
+      - "10000-10100:10000-10100/udp"  # RTP range
+    volumes:
+      - ./docs/asterisk/config:/etc/asterisk
+      - ./logs/asterisk:/var/log/asterisk
+      - ./media/recordings:/var/spool/asterisk/recording
+    environment:
+      - ASTERISK_UID=1000
+      - ASTERISK_GID=1000
+    networks:
+      - pydialer-network
+    healthcheck:
+      test: ["CMD", "asterisk", "-rx", "core show version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  pydialer-network:
+    external: false

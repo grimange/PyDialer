@@ -109,11 +109,11 @@ This document provides a comprehensive, actionable checklist for implementing a 
 - [x] 76. Implement time-zone aware call scheduling
 
 ### 11. Primary Telephony Integration (Asterisk)
-- [ ] 77. Install and configure Asterisk PBX server
-- [ ] 78. Set up ARI (Asterisk REST Interface) integration
-- [ ] 79. Configure AMI (Asterisk Manager Interface) for events
-- [ ] 80. Implement call origination and control via ARI
-- [ ] 81. Create telephony service abstraction layer
+- [x] 77. Install and configure Asterisk PBX server
+- [x] 78. Set up ARI (Asterisk REST Interface) integration
+- [x] 79. Configure AMI (Asterisk Manager Interface) for events
+- [x] 80. Implement call origination and control via ARI
+- [x] 81. Create telephony service abstraction layer
 - [ ] 82. Set up SIP trunking and PSTN connectivity
 - [ ] 83. Implement inbound call routing and queuing
 - [ ] 84. Add call recording and storage integration
@@ -132,7 +132,7 @@ This document provides a comprehensive, actionable checklist for implementing a 
 - [x] 93. Add Voice Activity Detection (VAD) for audio chunking optimization
 - [ ] 94. Create TTS integration for optional AI response playback
 - [x] 95. Set up audio format conversion utilities (PCM, G.711 μ-law/A-law)
-- [ ] 96. Implement call-specific WebSocket groups for targeted transcript delivery
+- [x] 96. Implement call-specific WebSocket groups for targeted transcript delivery
 - [ ] 97. Add error handling and retry mechanisms for AI service calls
 - [ ] 98. Create Docker containers for AI Media Gateway components
 
@@ -201,7 +201,7 @@ This document provides a comprehensive, actionable checklist for implementing a 
 - [ ] 136. Create audit trail and compliance logging
 - [ ] 137. Set up network security and rate limiting
 - [ ] 138. Secure OpenAI API key management and rotation
-- [ ] 139. Implement HMAC validation for AI webhook events
+- [x] 139. Implement HMAC validation for AI webhook events
 
 ### 16. Advanced Asterisk Features & Optional CPaaS
 - [ ] 140. Implement advanced Asterisk features (call monitoring, barge, whisper)

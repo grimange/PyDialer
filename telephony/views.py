@@ -21,8 +21,14 @@ from django.views import View
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
+from .ari_controller import ARIController
+from .ami_controller import get_ami_controller, start_ami_controller, stop_ami_controller
+
 logger = logging.getLogger('vicidial.telephony')
 channel_layer = get_channel_layer()
+
+# Global ARI controller instance
+_ari_controller = None
 
 
 def validate_hmac_signature(f):
@@ -337,4 +343,638 @@ def ai_webhook_health(request):
             'service': 'AI Events Webhook',
             'status': 'unhealthy',
             'error': str(e)
+        }, status=500)
+
+
+# ARI Controller Service Management Endpoints
+
+def get_ari_controller():
+    """Get or create the global ARI controller instance."""
+    global _ari_controller
+    if _ari_controller is None:
+        _ari_controller = ARIController(
+            ari_url=getattr(settings, 'ASTERISK_ARI_URL', 'http://localhost:8088'),
+            username=getattr(settings, 'ASTERISK_ARI_USERNAME', 'asterisk'),
+            password=getattr(settings, 'ASTERISK_ARI_PASSWORD', 'asterisk'),
+            app_name=getattr(settings, 'ASTERISK_STASIS_APP', 'pydialer')
+        )
+    return _ari_controller
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ari_controller_start(request):
+    """
+    Start the ARI Controller service.
+    
+    Returns service status and connection information.
+    """
+    try:
+        controller = get_ari_controller()
+        
+        if controller.connected:
+            return JsonResponse({
+                'status': 'already_running',
+                'message': 'ARI Controller is already running',
+                'connected': True
+            })
+        
+        # Start controller asynchronously
+        import asyncio
+        
+        async def start_controller():
+            await controller.start()
+        
+        # Run in thread to avoid blocking the request
+        import threading
+        
+        def run_start():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(start_controller())
+            except Exception as e:
+                logger.error(f"Error starting ARI controller: {e}")
+            finally:
+                loop.close()
+        
+        thread = threading.Thread(target=run_start, daemon=True)
+        thread.start()
+        thread.join(timeout=10)  # Wait up to 10 seconds
+        
+        return JsonResponse({
+            'status': 'started' if controller.connected else 'starting',
+            'message': 'ARI Controller start initiated',
+            'connected': controller.connected,
+            'ari_url': controller.ari_url,
+            'app_name': controller.app_name
+        })
+        
+    except Exception as e:
+        logger.error(f"Error starting ARI controller: {e}", exc_info=True)
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Failed to start ARI Controller: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ari_controller_stop(request):
+    """
+    Stop the ARI Controller service.
+    
+    Returns shutdown status.
+    """
+    try:
+        controller = get_ari_controller()
+        
+        if not controller.connected:
+            return JsonResponse({
+                'status': 'already_stopped',
+                'message': 'ARI Controller is not running',
+                'connected': False
+            })
+        
+        # Stop controller asynchronously
+        import asyncio
+        
+        async def stop_controller():
+            await controller.stop()
+        
+        # Run in thread to avoid blocking the request
+        import threading
+        
+        def run_stop():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(stop_controller())
+            except Exception as e:
+                logger.error(f"Error stopping ARI controller: {e}")
+            finally:
+                loop.close()
+        
+        thread = threading.Thread(target=run_stop, daemon=True)
+        thread.start()
+        thread.join(timeout=10)  # Wait up to 10 seconds
+        
+        return JsonResponse({
+            'status': 'stopped',
+            'message': 'ARI Controller stopped successfully',
+            'connected': controller.connected
+        })
+        
+    except Exception as e:
+        logger.error(f"Error stopping ARI controller: {e}", exc_info=True)
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Failed to stop ARI Controller: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def ari_controller_status(request):
+    """
+    Get ARI Controller service status.
+    
+    Returns detailed status information including connection state,
+    active channels, and configuration.
+    """
+    try:
+        controller = get_ari_controller()
+        
+        status_info = {
+            'service': 'ARI Controller',
+            'connected': controller.connected,
+            'ari_url': controller.ari_url,
+            'app_name': controller.app_name,
+            'active_channels': len(controller.active_channels),
+            'channel_list': list(controller.active_channels),
+            'reconnect_attempts': controller.reconnect_attempts,
+            'max_reconnect_attempts': controller.max_reconnect_attempts
+        }
+        
+        # Import datetime here to avoid circular imports
+        from datetime import datetime
+        status_info['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+        
+        if controller.connected:
+            status_info['status'] = 'running'
+            status_info['message'] = 'ARI Controller is running and connected'
+        else:
+            status_info['status'] = 'stopped'
+            status_info['message'] = 'ARI Controller is not connected'
+        
+        http_status = 200 if controller.connected else 503
+        
+        return JsonResponse(status_info, status=http_status)
+        
+    except Exception as e:
+        logger.error(f"Error getting ARI controller status: {e}", exc_info=True)
+        return JsonResponse({
+            'service': 'ARI Controller',
+            'status': 'error',
+            'message': f'Error retrieving status: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ari_controller_test(request):
+    """
+    Test ARI Controller connection to Asterisk.
+    
+    Performs a connection test without starting the full service.
+    """
+    try:
+        # Create a temporary controller for testing
+        test_controller = ARIController(
+            ari_url=getattr(settings, 'ASTERISK_ARI_URL', 'http://localhost:8088'),
+            username=getattr(settings, 'ASTERISK_ARI_USERNAME', 'asterisk'),
+            password=getattr(settings, 'ASTERISK_ARI_PASSWORD', 'asterisk'),
+            app_name=getattr(settings, 'ASTERISK_STASIS_APP', 'pydialer')
+        )
+        
+        # Test connection asynchronously
+        import asyncio
+        
+        async def test_connection():
+            try:
+                # Test HTTP connection first
+                import aiohttp
+                timeout = aiohttp.ClientTimeout(total=5)
+                async with aiohttp.ClientSession(
+                    timeout=timeout,
+                    auth=aiohttp.BasicAuth(test_controller.username, test_controller.password)
+                ) as session:
+                    url = f"{test_controller.ari_url}/ari/asterisk/info"
+                    async with session.get(url) as response:
+                        if response.status == 200:
+                            asterisk_info = await response.json()
+                            return {
+                                'connection_test': True,
+                                'asterisk_version': asterisk_info.get('version', 'unknown'),
+                                'asterisk_info': asterisk_info
+                            }
+                        else:
+                            return {
+                                'connection_test': False,
+                                'error': f'HTTP connection failed: {response.status}'
+                            }
+            except Exception as e:
+                return {
+                    'connection_test': False,
+                    'error': str(e)
+                }
+        
+        # Run test in thread
+        import threading
+        test_result = {}
+        
+        def run_test():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                test_result.update(loop.run_until_complete(test_connection()))
+            except Exception as e:
+                test_result['connection_test'] = False
+                test_result['error'] = str(e)
+            finally:
+                loop.close()
+        
+        thread = threading.Thread(target=run_test)
+        thread.start()
+        thread.join(timeout=10)  # Wait up to 10 seconds
+        
+        if not test_result:
+            test_result = {
+                'connection_test': False,
+                'error': 'Test timeout'
+            }
+        
+        # Import datetime here
+        from datetime import datetime
+        test_result['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+        test_result['ari_url'] = test_controller.ari_url
+        test_result['app_name'] = test_controller.app_name
+        
+        status_code = 200 if test_result.get('connection_test') else 503
+        
+        return JsonResponse(test_result, status=status_code)
+        
+    except Exception as e:
+        logger.error(f"Error testing ARI controller connection: {e}", exc_info=True)
+        return JsonResponse({
+            'connection_test': False,
+            'error': f'Test failed: {str(e)}'
+        }, status=500)
+
+
+# AMI Controller Management Endpoints
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ami_controller_start(request):
+    """
+    Start AMI Controller service.
+    
+    Establishes connection to Asterisk Manager Interface and begins
+    event processing for real-time call state updates.
+    """
+    try:
+        controller = get_ami_controller()
+        
+        if controller and controller.connected:
+            return JsonResponse({
+                'service': 'AMI Controller',
+                'status': 'already_running',
+                'message': 'AMI Controller is already running',
+                'host': controller.host,
+                'port': controller.port
+            })
+        
+        # Start controller asynchronously
+        import asyncio
+        import threading
+        
+        result = {}
+        
+        async def start_controller():
+            try:
+                controller = await start_ami_controller()
+                return {
+                    'success': True,
+                    'host': controller.host,
+                    'port': controller.port,
+                    'connected': controller.connected,
+                    'authenticated': controller.authenticated
+                }
+            except Exception as e:
+                return {
+                    'success': False,
+                    'error': str(e)
+                }
+        
+        def run_start():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result.update(loop.run_until_complete(start_controller()))
+            except Exception as e:
+                result['success'] = False
+                result['error'] = str(e)
+            finally:
+                loop.close()
+        
+        thread = threading.Thread(target=run_start)
+        thread.start()
+        thread.join(timeout=30)  # Wait up to 30 seconds
+        
+        if result.get('success'):
+            return JsonResponse({
+                'service': 'AMI Controller',
+                'status': 'started',
+                'message': 'AMI Controller started successfully',
+                'host': result.get('host'),
+                'port': result.get('port'),
+                'connected': result.get('connected'),
+                'authenticated': result.get('authenticated')
+            })
+        else:
+            return JsonResponse({
+                'service': 'AMI Controller',
+                'status': 'error',
+                'message': f'Failed to start AMI Controller: {result.get("error", "Unknown error")}'
+            }, status=500)
+    
+    except Exception as e:
+        logger.error(f"Error starting AMI controller: {e}", exc_info=True)
+        return JsonResponse({
+            'service': 'AMI Controller',
+            'status': 'error',
+            'message': f'Error starting service: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ami_controller_stop(request):
+    """
+    Stop AMI Controller service.
+    
+    Cleanly shuts down the AMI connection and stops event processing.
+    """
+    try:
+        controller = get_ami_controller()
+        
+        if not controller or not controller.connected:
+            return JsonResponse({
+                'service': 'AMI Controller',
+                'status': 'not_running',
+                'message': 'AMI Controller is not running'
+            })
+        
+        # Stop controller asynchronously
+        import asyncio
+        import threading
+        
+        result = {}
+        
+        async def stop_controller():
+            try:
+                await stop_ami_controller()
+                return {'success': True}
+            except Exception as e:
+                return {'success': False, 'error': str(e)}
+        
+        def run_stop():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result.update(loop.run_until_complete(stop_controller()))
+            except Exception as e:
+                result['success'] = False
+                result['error'] = str(e)
+            finally:
+                loop.close()
+        
+        thread = threading.Thread(target=run_stop)
+        thread.start()
+        thread.join(timeout=15)  # Wait up to 15 seconds
+        
+        if result.get('success'):
+            return JsonResponse({
+                'service': 'AMI Controller',
+                'status': 'stopped',
+                'message': 'AMI Controller stopped successfully'
+            })
+        else:
+            return JsonResponse({
+                'service': 'AMI Controller',
+                'status': 'error',
+                'message': f'Failed to stop AMI Controller: {result.get("error", "Unknown error")}'
+            }, status=500)
+    
+    except Exception as e:
+        logger.error(f"Error stopping AMI controller: {e}", exc_info=True)
+        return JsonResponse({
+            'service': 'AMI Controller',
+            'status': 'error',
+            'message': f'Error stopping service: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def ami_controller_status(request):
+    """
+    Get AMI Controller service status.
+    
+    Returns detailed status information including connection state,
+    authentication status, and configuration.
+    """
+    try:
+        controller = get_ami_controller()
+        
+        if not controller:
+            return JsonResponse({
+                'service': 'AMI Controller',
+                'status': 'stopped',
+                'message': 'AMI Controller is not initialized',
+                'connected': False,
+                'authenticated': False
+            }, status=503)
+        
+        # Get status asynchronously
+        import asyncio
+        import threading
+        
+        status_result = {}
+        
+        async def get_status():
+            try:
+                status = await controller.get_connection_status()
+                return status
+            except Exception as e:
+                return {
+                    'connected': False,
+                    'authenticated': False,
+                    'error': str(e)
+                }
+        
+        def run_status():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                status_result.update(loop.run_until_complete(get_status()))
+            except Exception as e:
+                status_result['connected'] = False
+                status_result['authenticated'] = False
+                status_result['error'] = str(e)
+            finally:
+                loop.close()
+        
+        thread = threading.Thread(target=run_status)
+        thread.start()
+        thread.join(timeout=5)  # Wait up to 5 seconds
+        
+        status_info = {
+            'service': 'AMI Controller',
+            'connected': status_result.get('connected', False),
+            'authenticated': status_result.get('authenticated', False),
+            'host': status_result.get('host', 'unknown'),
+            'port': status_result.get('port', 'unknown'),
+            'reconnect_attempts': status_result.get('reconnect_attempts', 0),
+            'pending_actions': status_result.get('pending_actions', 0),
+            'event_handlers': status_result.get('event_handlers', 0)
+        }
+        
+        # Import datetime here to avoid circular imports
+        from datetime import datetime
+        status_info['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+        
+        if status_info['connected'] and status_info['authenticated']:
+            status_info['status'] = 'running'
+            status_info['message'] = 'AMI Controller is running and authenticated'
+            http_status = 200
+        elif status_info['connected']:
+            status_info['status'] = 'connecting'
+            status_info['message'] = 'AMI Controller is connected but not authenticated'
+            http_status = 503
+        else:
+            status_info['status'] = 'stopped'
+            status_info['message'] = 'AMI Controller is not connected'
+            http_status = 503
+        
+        if 'error' in status_result:
+            status_info['error'] = status_result['error']
+        
+        return JsonResponse(status_info, status=http_status)
+        
+    except Exception as e:
+        logger.error(f"Error getting AMI controller status: {e}", exc_info=True)
+        return JsonResponse({
+            'service': 'AMI Controller',
+            'status': 'error',
+            'message': f'Error retrieving status: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ami_controller_test(request):
+    """
+    Test AMI Controller connection to Asterisk.
+    
+    Performs a connection test without starting the full service.
+    """
+    try:
+        # Import AMI Controller for testing
+        from .ami_controller import AMIController
+        
+        # Create a temporary controller for testing
+        ami_config = getattr(settings, 'AMI_CONFIG', {})
+        test_controller = AMIController(
+            host=ami_config.get('HOST', 'localhost'),
+            port=ami_config.get('PORT', 5038),
+            username=ami_config.get('USERNAME', 'pydialer'),
+            password=ami_config.get('PASSWORD', 'pydialer123')
+        )
+        
+        # Test connection asynchronously
+        import asyncio
+        import threading
+        
+        test_result = {}
+        
+        async def test_connection():
+            try:
+                # Try to connect and authenticate
+                await test_controller._connect()
+                await test_controller._authenticate()
+                
+                # Send a simple ping action
+                response = await test_controller.send_action("Ping")
+                
+                # Clean up
+                await test_controller.stop()
+                
+                if response and response.get('Response') == 'Success':
+                    return {
+                        'connection_test': True,
+                        'authentication_test': True,
+                        'ping_test': True
+                    }
+                else:
+                    return {
+                        'connection_test': True,
+                        'authentication_test': True,
+                        'ping_test': False,
+                        'error': 'Ping action failed'
+                    }
+                    
+            except Exception as e:
+                # Clean up on error
+                try:
+                    await test_controller.stop()
+                except:
+                    pass
+                return {
+                    'connection_test': False,
+                    'authentication_test': False,
+                    'ping_test': False,
+                    'error': str(e)
+                }
+        
+        def run_test():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                test_result.update(loop.run_until_complete(test_connection()))
+            except Exception as e:
+                test_result.update({
+                    'connection_test': False,
+                    'authentication_test': False,
+                    'ping_test': False,
+                    'error': str(e)
+                })
+            finally:
+                loop.close()
+        
+        thread = threading.Thread(target=run_test)
+        thread.start()
+        thread.join(timeout=15)  # Wait up to 15 seconds
+        
+        if not test_result:
+            test_result = {
+                'connection_test': False,
+                'authentication_test': False,
+                'ping_test': False,
+                'error': 'Test timeout'
+            }
+        
+        # Import datetime here
+        from datetime import datetime
+        test_result['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+        test_result['host'] = test_controller.host
+        test_result['port'] = test_controller.port
+        
+        # Determine overall success
+        overall_success = (test_result.get('connection_test', False) and 
+                          test_result.get('authentication_test', False) and 
+                          test_result.get('ping_test', False))
+        
+        status_code = 200 if overall_success else 503
+        
+        return JsonResponse(test_result, status=status_code)
+        
+    except Exception as e:
+        logger.error(f"Error testing AMI controller connection: {e}", exc_info=True)
+        return JsonResponse({
+            'connection_test': False,
+            'authentication_test': False,
+            'ping_test': False,
+            'error': f'Test failed: {str(e)}'
         }, status=500)
