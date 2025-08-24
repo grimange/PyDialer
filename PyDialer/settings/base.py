@@ -175,6 +175,77 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 
+# Celery Configuration
+# Base Celery settings - will be overridden in staging/production with Redis
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/1')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/2')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_TASK_ACKS_LATE = True
+CELERY_WORKER_DISABLE_RATE_LIMITS = False
+
+# Celery Beat Schedule (for scheduled tasks)
+CELERY_BEAT_SCHEDULE = {
+    # Example scheduled task - can be expanded later
+    'cleanup-old-cdrs': {
+        'task': 'calls.tasks.cleanup_old_cdrs',
+        'schedule': 3600.0,  # Run every hour
+    },
+}
+
+# Celery Queue Configuration
+CELERY_TASK_ROUTES = {
+    'campaigns.tasks.predictive_dial': {'queue': 'dialing'},
+    'calls.tasks.*': {'queue': 'calls'},
+    'leads.tasks.*': {'queue': 'leads'},
+    'reporting.tasks.*': {'queue': 'reporting'},
+}
+
+CELERY_TASK_DEFAULT_QUEUE = 'default'
+CELERY_TASK_QUEUES = {
+    'default': {
+        'exchange': 'default',
+        'routing_key': 'default',
+    },
+    'dialing': {
+        'exchange': 'dialing',
+        'routing_key': 'dialing',
+    },
+    'calls': {
+        'exchange': 'calls',
+        'routing_key': 'calls',
+    },
+    'leads': {
+        'exchange': 'leads',
+        'routing_key': 'leads',
+    },
+    'reporting': {
+        'exchange': 'reporting',
+        'routing_key': 'reporting',
+    },
+}
+
+# Celery Flower Configuration (Monitoring)
+CELERY_FLOWER_USER = os.environ.get('CELERY_FLOWER_USER', 'admin')
+CELERY_FLOWER_PASSWORD = os.environ.get('CELERY_FLOWER_PASSWORD', 'admin')
+CELERY_FLOWER_URL_PREFIX = os.environ.get('CELERY_FLOWER_URL_PREFIX', '/flower')
+CELERY_FLOWER_BASIC_AUTH = f"{CELERY_FLOWER_USER}:{CELERY_FLOWER_PASSWORD}"
+
+# Additional Flower settings
+FLOWER_BASIC_AUTH = [CELERY_FLOWER_BASIC_AUTH]
+FLOWER_UNAUTHENTICATED_API = False
+FLOWER_AUTO_REFRESH = True
+FLOWER_PERSISTENT = True
+FLOWER_DB = os.environ.get('FLOWER_DB', BASE_DIR / 'flower.db')
+FLOWER_MAX_TASKS = int(os.environ.get('FLOWER_MAX_TASKS', '10000'))
+
 # Call Center specific settings
 CALL_CENTER_SETTINGS = {
     'DEFAULT_TIMEZONE': 'America/New_York',
