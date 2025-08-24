@@ -6,7 +6,7 @@ This module contains basic DRF serializers for call management functionality.
 
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import CallTask, CallDetailRecord, Recording, DNCList, ComplianceAuditLog
+from .models import CallTask, CallDetailRecord, Recording, DNCList, ComplianceAuditLog, Disposition
 
 User = get_user_model()
 
@@ -150,3 +150,74 @@ class ComplianceAuditLogSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id', 'audit_id', 'event_timestamp', 'created_at', 'reviewed_at'
         ]
+
+
+class DispositionSerializer(serializers.ModelSerializer):
+    """
+    Comprehensive serializer for Disposition model.
+    """
+    call_task_info = serializers.CharField(source='call_task.__str__', read_only=True)
+    agent_name = serializers.CharField(source='agent.get_full_name', read_only=True)
+    campaign_name = serializers.CharField(source='call_task.campaign.name', read_only=True)
+    lead_phone = serializers.CharField(source='call_task.lead.phone', read_only=True)
+    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    callback_type_display = serializers.CharField(source='get_callback_type_display', read_only=True)
+    callback_priority_display = serializers.CharField(source='get_callback_priority_display', read_only=True)
+    reviewed_by_name = serializers.CharField(source='reviewed_by.get_full_name', read_only=True)
+
+    class Meta:
+        model = Disposition
+        fields = [
+            'id', 'disposition_id', 'call_task', 'call_task_info', 'cdr',
+            'disposition_code', 'disposition_name', 'category', 'category_display',
+            'agent', 'agent_name', 'campaign_name', 'lead_phone',
+            'disposition_time', 'wrap_up_time', 'notes', 'is_final', 'requires_followup',
+            'schedule_callback', 'callback_date', 'callback_time', 'callback_type',
+            'callback_type_display', 'callback_notes', 'callback_priority', 
+            'callback_priority_display', 'best_time_start', 'best_time_end',
+            'best_days', 'timezone_preference', 'sale_amount', 'products_sold',
+            'commission_amount', 'quality_score', 'compliance_flags',
+            'requires_supervisor_review', 'supervisor_reviewed', 'reviewed_by',
+            'reviewed_by_name', 'reviewed_at', 'is_valid', 'validation_errors',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = [
+            'id', 'disposition_id', 'disposition_time', 'supervisor_reviewed',
+            'reviewed_at', 'is_valid', 'validation_errors', 'created_at', 'updated_at'
+        ]
+
+    def validate(self, data):
+        """Custom validation for disposition data"""
+        # Check callback scheduling consistency
+        if data.get('schedule_callback') and not data.get('callback_date'):
+            raise serializers.ValidationError({
+                'callback_date': 'Callback date is required when scheduling callback.'
+            })
+        
+        # Check sale information consistency
+        if data.get('category') == 'sale' and not data.get('sale_amount'):
+            raise serializers.ValidationError({
+                'sale_amount': 'Sale amount should be specified for sales dispositions.'
+            })
+        
+        # Check DNC compliance
+        if data.get('category') == 'dnc' and data.get('schedule_callback'):
+            raise serializers.ValidationError({
+                'schedule_callback': 'Cannot schedule callback for DNC disposition.'
+            })
+        
+        return data
+
+    def create(self, validated_data):
+        """Create disposition with automatic validation"""
+        disposition = super().create(validated_data)
+        disposition.validate_disposition()
+        disposition.save()
+        return disposition
+
+    def update(self, instance, validated_data):
+        """Update disposition with automatic validation"""
+        disposition = super().update(instance, validated_data)
+        disposition.validate_disposition()
+        disposition.save()
+        return disposition

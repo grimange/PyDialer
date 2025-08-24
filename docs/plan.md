@@ -330,12 +330,22 @@ This implementation plan references the latest Vicidial architecture and incorpo
    - Cost-effective scaling for high-volume operations
 
 2. **AI Media Gateway Integration**
+
+   **Option A: Internal AI Media Gateway (Self-hosted)**
    - Real-time audio ingestion from Asterisk via ExternalMedia channels
    - WebRTC support for browser-based agent interfaces
    - Raw RTP handling for direct audio stream processing
    - Integration with OpenAI Whisper for speech-to-text transcription
    - Optional text-to-speech (TTS) playback via reverse RTP or ARI
    - Real-time transcript broadcasting to agents via WebSockets
+
+   **Option B: External AI Media Gateway Integration**
+   - Connect to third-party AI media gateway providers (Deepgram, AssemblyAI, Azure Cognitive Services)
+   - API-based audio streaming to external transcription services
+   - Webhook integration for receiving real-time transcription results
+   - Multi-provider failover and load balancing capabilities
+   - Cost optimization through provider selection and usage analytics
+   - Provider-agnostic abstraction layer for easy switching between services
 
 3. **Advanced Audio Processing Pipeline**
    ```

@@ -65,11 +65,14 @@ urlpatterns = [
     # Campaign management
     path('api/<version>/campaigns/', include('campaigns.urls')),
     
-    # Call management (to be implemented - urls.py not created yet)
-    # path('api/<version>/calls/', include('calls.urls')),
+    # Call management
+    path('api/<version>/calls/', include('calls.urls')),
     
     # Lead management
     path('api/<version>/leads/', include('leads.urls')),
+    
+    # Reporting and statistics
+    path('api/<version>/reporting/', include('reporting.urls')),
     
     # Default API root (backwards compatibility)
     path('api/', api_root, name='api_root_default'),

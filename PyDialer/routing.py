@@ -9,21 +9,21 @@ and call management features.
 from django.urls import re_path, path
 from channels.routing import URLRouter
 
-# Import WebSocket consumers (will be created in future tasks)
-# from apps.agents.consumers import AgentConsumer
-# from apps.campaigns.consumers import CampaignConsumer
-# from apps.monitoring.consumers import SupervisorConsumer
+# Import WebSocket consumers
+from agents.consumers import AgentConsumer, SupervisorConsumer
+from calls.consumers import CallConsumer
+from campaigns.consumers import CampaignConsumer
 
 # WebSocket URL patterns for the call center system
 websocket_urlpatterns = [
     # Agent interface WebSocket connections
-    # re_path(r'ws/agent/(?P<agent_id>\w+)/$', AgentConsumer.as_asgi()),
+    re_path(r'ws/agent/(?P<agent_id>\w+)/$', AgentConsumer.as_asgi()),
     
     # Campaign management WebSocket connections
-    # re_path(r'ws/campaign/(?P<campaign_id>\w+)/$', CampaignConsumer.as_asgi()),
+    re_path(r'ws/campaign/(?P<campaign_id>\w+)/$', CampaignConsumer.as_asgi()),
     
     # Supervisor dashboard WebSocket connections
-    # re_path(r'ws/supervisor/(?P<supervisor_id>\w+)/$', SupervisorConsumer.as_asgi()),
+    re_path(r'ws/supervisor/(?P<supervisor_id>\w+)/$', SupervisorConsumer.as_asgi()),
     
     # Real-time notifications for all authenticated users
     # path('ws/notifications/', NotificationConsumer.as_asgi()),
@@ -32,7 +32,7 @@ websocket_urlpatterns = [
     # path('ws/system/', SystemConsumer.as_asgi()),
     
     # Call events and status updates
-    # re_path(r'ws/calls/(?P<call_id>\w+)/$', CallConsumer.as_asgi()),
+    re_path(r'ws/calls/(?P<call_id>\w+)/$', CallConsumer.as_asgi()),
     
     # For now, empty list - consumers will be added as they are implemented
 ]

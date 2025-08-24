@@ -10,7 +10,7 @@ This document outlines all system dependencies, software installations, and infr
 
 ### Operating System
 - **Development**: Windows/Linux/macOS (current: Windows with PowerShell)
-- **Production**: Linux (Ubuntu 20.04+ or CentOS 8+ recommended)
+- **Production**: Linux (Ubuntu 24.04.3 LTS or CentOS 8+ recommended)
 - **Containerization**: Docker support required for production deployment
 
 ### Hardware Minimum Requirements
@@ -169,10 +169,10 @@ npm --version
 ## 7. Telephony & Communication Services
 
 ### Primary Telephony - Asterisk PBX (Phase 3)
-- **Asterisk** or **FreeSWITCH** (primary self-hosted PBX)
+- **Asterisk 21** or **FreeSWITCH** (primary self-hosted PBX)
 - **Purpose**: Complete call control, predictive dialing, call recording, agent management
 - **Requirements**:
-  - Linux server (Ubuntu 20.04+ or CentOS 8+ recommended)
+  - Linux server (Ubuntu 24.04.3 LTS or CentOS 8+ recommended)
   - SIP trunking provider (for PSTN connectivity)
   - ARI (Asterisk REST Interface) configuration
   - AMI (Asterisk Manager Interface) setup
