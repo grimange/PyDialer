@@ -309,6 +309,76 @@ class CallConsumer(AsyncWebsocketConsumer):
             'timestamp': await self.get_current_timestamp()
         }))
 
+    async def send_transcript(self, event):
+        """
+        Handler for real-time transcript messages from AI Media Gateway.
+        
+        Receives transcript events from the AI webhook and broadcasts them
+        to connected WebSocket clients for real-time display.
+        """
+        message = event['message']
+        
+        # Add additional metadata for frontend processing
+        enhanced_message = {
+            **message,
+            'type': 'transcript',
+            'websocket_timestamp': await self.get_current_timestamp()
+        }
+        
+        await self.send(text_data=json.dumps(enhanced_message))
+        
+        logger.debug(
+            f"Sent transcript to WebSocket for call {self.call_id}: "
+            f"speaker={message.get('speaker', 'unknown')}, "
+            f"confidence={message.get('confidence', 0.0)}, "
+            f"is_final={message.get('is_final', False)}"
+        )
+
+    async def send_call_event(self, event):
+        """
+        Handler for call events from AI Media Gateway.
+        
+        Receives call event notifications from the AI webhook and broadcasts
+        them to connected WebSocket clients.
+        """
+        message = event['message']
+        
+        # Add additional metadata for frontend processing
+        enhanced_message = {
+            **message,
+            'websocket_timestamp': await self.get_current_timestamp()
+        }
+        
+        await self.send(text_data=json.dumps(enhanced_message))
+        
+        logger.debug(
+            f"Sent call event to WebSocket for call {self.call_id}: "
+            f"event={message.get('event', 'unknown')}"
+        )
+
+    async def send_ai_status(self, event):
+        """
+        Handler for AI processing status updates from AI Media Gateway.
+        
+        Receives AI status updates from the AI webhook and broadcasts them
+        to connected WebSocket clients for monitoring AI processing state.
+        """
+        message = event['message']
+        
+        # Add additional metadata for frontend processing
+        enhanced_message = {
+            **message,
+            'websocket_timestamp': await self.get_current_timestamp()
+        }
+        
+        await self.send(text_data=json.dumps(enhanced_message))
+        
+        logger.debug(
+            f"Sent AI status to WebSocket for call {self.call_id}: "
+            f"status={message.get('status', 'unknown')}, "
+            f"message='{message.get('message', '')[:50]}...'"
+        )
+
     # Helper methods
     @database_sync_to_async
     def verify_call_permissions(self):

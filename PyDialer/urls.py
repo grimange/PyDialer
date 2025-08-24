@@ -74,6 +74,9 @@ urlpatterns = [
     # Reporting and statistics
     path('api/<version>/reporting/', include('reporting.urls')),
     
+    # Telephony and AI Media Gateway
+    path('', include('telephony.urls')),
+    
     # Default API root (backwards compatibility)
     path('api/', api_root, name='api_root_default'),
     

@@ -67,6 +67,7 @@ class Lead(models.Model):
     max_attempts = models.IntegerField(default=3)
     last_call_at = models.DateTimeField(null=True, blank=True, db_index=True)
     next_call_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    recycle_count = models.IntegerField(default=0, help_text="Number of times this lead has been recycled")
     
     # Timezone and Scheduling
     timezone = models.CharField(max_length=50, default='UTC', help_text="Lead's timezone")

@@ -91,6 +91,32 @@ class Campaign(models.Model):
     retry_delay_minutes = models.IntegerField(default=60, help_text="Minutes between retry attempts")
     recycle_inactive_leads = models.BooleanField(default=True)
     
+    # Lead Recycling Rules
+    recycle_no_answer_days = models.IntegerField(
+        default=7, 
+        help_text="Days after which 'no answer' leads are recycled"
+    )
+    recycle_busy_days = models.IntegerField(
+        default=1, 
+        help_text="Days after which 'busy' leads are recycled"
+    )
+    recycle_disconnected_days = models.IntegerField(
+        default=30, 
+        help_text="Days after which 'disconnected' leads are recycled"
+    )
+    max_recycle_attempts = models.IntegerField(
+        default=2, 
+        help_text="Maximum number of times a lead can be recycled"
+    )
+    exclude_dnc_from_recycling = models.BooleanField(
+        default=True, 
+        help_text="Exclude DNC leads from recycling"
+    )
+    recycle_only_business_hours = models.BooleanField(
+        default=True, 
+        help_text="Only recycle leads during campaign business hours"
+    )
+    
     # Agent Assignment
     assigned_agents = models.ManyToManyField(User, through='CampaignAgentAssignment', 
                                            through_fields=('campaign', 'agent'),
